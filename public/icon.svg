@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Map pin drop shape -->
+  <path
+    d="M32 4C22.06 4 14 12.06 14 22C14 33.5 26 46 30.4 50.9C31.24 51.86 32.76 51.86 33.6 50.9C38 46 50 33.5 50 22C50 12.06 41.94 4 32 4Z"
+    fill="#0F766E"
+  />
+  <!-- Inner circle (hole/window) -->
+  <circle cx="32" cy="22" r="7" fill="white" />
+  <!-- Small guide lines inside the pin to suggest a document/guide -->
+  <rect x="29" y="19" width="6" height="1.5" rx="0.75" fill="#0F766E" />
+  <rect x="29" y="21.5" width="6" height="1.5" rx="0.75" fill="#0F766E" />
+  <rect x="29" y="24" width="4" height="1.5" rx="0.75" fill="#0F766E" />
+</svg>

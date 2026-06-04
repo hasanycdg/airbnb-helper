@@ -1,0 +1,914 @@
+// ─────────────────────────────────────────────────────────────────────────
+// StayGuide Pro — Prisma schema
+// Multi-tenant digital guest experience & property operations platform.
+//
+// Tenancy model: User ──< OrganizationMember >── Organization ──< Property
+// Almost every operational record is scoped by `organizationId` and/or
+// `propertyId`. Org deletion cascades to all tenant data (GDPR erase).
+// ─────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Enums ────────────────────────────────────────────────────────────────
+
+enum Role {
+  OWNER
+  MANAGER
+  CLEANER
+}
+
+enum PlanTier {
+  TRIAL
+  STARTER
+  PRO
+  PREMIUM
+  MANAGER
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+enum Locale {
+  DE
+  EN
+  IT
+  FR
+  NL
+  ES
+  TR
+}
+
+enum GuideAccessMode {
+  PUBLIC
+  PASSWORD
+  BOOKING_CODE
+}
+
+enum SectionType {
+  WELCOME
+  CHECK_IN
+  FIND_PROPERTY
+  PARKING
+  KEYBOX
+  WIFI
+  HEATING
+  HOT_WATER
+  KITCHEN
+  DISHWASHER
+  WASHING_MACHINE
+  TV
+  TRASH
+  STORAGE
+  HOUSE_RULES
+  QUIET_HOURS
+  SAFETY
+  CHECKOUT
+  LOCAL_RECOMMENDATIONS
+  PUBLIC_TRANSPORT
+  TAXI
+  SUPERMARKETS
+  RESTAURANTS
+  PHARMACY
+  DOCTOR
+  FAQ
+  CUSTOM
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  PDF
+  FILE
+}
+
+enum QRCodeType {
+  FULL_GUIDE
+  WIFI
+  HEATING
+  PARKING
+  TRASH
+  CHECKOUT
+  ISSUE_REPORT
+  RECOMMENDATIONS
+  SECTION
+}
+
+enum IssueStatus {
+  NEW
+  ACKNOWLEDGED
+  ASSIGNED
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum IssueCategory {
+  CHECK_IN
+  KEYBOX
+  WIFI
+  HEATING
+  HOT_WATER
+  ELECTRICITY
+  CLEANLINESS
+  PARKING
+  NOISE
+  BROKEN_ITEM
+  MISSING_ITEM
+  OTHER
+}
+
+enum IssueUrgency {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum IssueSource {
+  GUEST
+  HOST
+  SATISFACTION
+  CLEANING
+}
+
+enum CleaningStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  INSPECTED
+}
+
+enum MessageType {
+  BOOKING_CONFIRMATION
+  PRE_ARRIVAL
+  CHECK_IN_DAY
+  SATISFACTION_CHECK
+  CHECKOUT_REMINDER
+  REVIEW_REQUEST
+  PROBLEM_FOLLOW_UP
+  LATE_CHECKOUT
+  PARKING_INFO
+  HOUSE_RULES_REMINDER
+}
+
+enum MessageChannel {
+  MANUAL
+  EMAIL
+  SMS
+}
+
+enum ScheduledMessageStatus {
+  SCHEDULED
+  SENT
+  FAILED
+  CANCELED
+}
+
+enum SatisfactionResponse {
+  PENDING
+  GOOD
+  PROBLEM
+}
+
+enum InventoryStatus {
+  OK
+  LOW
+  EMPTY
+}
+
+enum RestockStatus {
+  PENDING
+  IN_PROGRESS
+  DONE
+}
+
+enum RecommendationCategory {
+  RESTAURANT
+  BREAKFAST
+  SUPERMARKET
+  PHARMACY
+  DOCTOR
+  TAXI
+  AIRPORT_TRANSFER
+  PUBLIC_TRANSPORT
+  SKI_BUS
+  BIKE_RENTAL
+  SKI_RENTAL
+  ATTRACTION
+  HIKING
+  COWORKING
+  PARKING_GARAGE
+  OTHER
+}
+
+enum ReviewRequestStatus {
+  DRAFT
+  READY
+  SENT
+  COMPLETED
+}
+
+enum AnalyticsEventType {
+  GUIDE_VIEW
+  SECTION_VIEW
+  QR_SCAN
+  AI_QUESTION
+  AI_UNANSWERED
+  ISSUE_CREATED
+  SATISFACTION_SUBMITTED
+  REVIEW_REQUEST_SENT
+  MEDIA_PLAY
+  SEARCH
+}
+
+// ── Identity & tenancy ─────────────────────────────────────────────────────
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  name           String?
+  hashedPassword String?
+  image          String?
+  isSuperAdmin   Boolean   @default(false)
+  emailVerified  DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  memberships             OrganizationMember[]
+  invitationsSent         Invitation[]         @relation("InvitedBy")
+  assignedIssues          Issue[]              @relation("IssueAssignee")
+  issueComments           IssueComment[]
+  assignedCleaningTasks   CleaningTask[]       @relation("CleaningAssignee")
+  inspectedCleaningTasks  CleaningTask[]       @relation("CleaningInspector")
+  assignedRestockTasks    RestockTask[]        @relation("RestockAssignee")
+  auditLogs               AuditLog[]
+}
+
+model Organization {
+  id               String    @id @default(cuid())
+  name             String
+  slug             String    @unique
+  logoUrl          String?
+  primaryColor     String    @default("#0F766E")
+  defaultLocale    Locale    @default(EN)
+  supportedLocales Locale[]  @default([EN, DE])
+  trialEndsAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  members                   OrganizationMember[]
+  invitations               Invitation[]
+  subscription              Subscription?
+  properties                Property[]
+  messageTemplates          MessageTemplate[]
+  cleaningChecklistTemplates CleaningChecklistTemplate[]
+  issues                    Issue[]
+  cleaningTasks             CleaningTask[]
+  analyticsEvents           AnalyticsEvent[]
+  auditLogs                 AuditLog[]
+}
+
+model OrganizationMember {
+  id             String       @id @default(cuid())
+  organizationId String
+  userId         String
+  role           Role         @default(MANAGER)
+  createdAt      DateTime     @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+}
+
+model Invitation {
+  id             String           @id @default(cuid())
+  organizationId String
+  email          String
+  role           Role             @default(MANAGER)
+  token          String           @unique
+  status         InvitationStatus @default(PENDING)
+  invitedById    String?
+  expiresAt      DateTime
+  createdAt      DateTime         @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedBy    User?        @relation("InvitedBy", fields: [invitedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([email])
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  organizationId       String             @unique
+  plan                 PlanTier           @default(TRIAL)
+  status               SubscriptionStatus @default(TRIALING)
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  stripePriceId        String?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+// ── Property & guide content ───────────────────────────────────────────────
+
+model Property {
+  id             String   @id @default(cuid())
+  organizationId String
+
+  name        String // internal name
+  internalName String?
+  publicName  String
+  slug        String  @unique // public guide URL segment: /g/[slug]
+
+  addressLine String?
+  city        String?
+  country     String?
+  postalCode  String?
+  timezone    String  @default("Europe/Vienna")
+  latitude    Float?
+  longitude   Float?
+
+  checkInTime  String @default("15:00")
+  checkOutTime String @default("10:00")
+  maxGuests    Int?
+
+  baseLocale       Locale   @default(EN)
+  supportedLocales Locale[] @default([EN, DE])
+
+  hostName  String?
+  hostEmail String?
+  hostPhone String?
+
+  emergencyContacts Json? // [{ label, phone }]
+  wifiName          String?
+  wifiPassword      String?
+  parkingInfo       String?
+  houseRules        String?
+  quietHoursFrom    String?
+  quietHoursTo      String?
+
+  coverImageUrl       String?
+  images              String[] @default([])
+  brandingPrimaryColor String?
+  brandingLogoUrl     String?
+
+  isPublished  Boolean         @default(false)
+  accessMode   GuideAccessMode @default(PUBLIC)
+  guidePassword String?
+
+  // Guest AI assistant configuration
+  aiEnabled             Boolean @default(true)
+  aiConfidenceThreshold Float   @default(0.6)
+  aiSystemPromptExtra   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization      Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sections          GuideSection[]
+  media             GuideMedia[]
+  qrCodes           QRCode[]
+  viewEvents        GuestGuideViewEvent[]
+  guestQuestions    GuestQuestion[]
+  aiAnswerLogs      AIAnswerLog[]
+  messageTemplates  MessageTemplate[]
+  scheduledMessages ScheduledMessage[]
+  guestStays        GuestStay[]
+  satisfactionChecks SatisfactionCheck[]
+  issues            Issue[]
+  cleaningTasks     CleaningTask[]
+  inventoryItems    InventoryItem[]
+  restockTasks      RestockTask[]
+  recommendations   Recommendation[]
+  reviewRequests    ReviewRequest[]
+  analyticsEvents   AnalyticsEvent[]
+
+  @@index([organizationId])
+}
+
+model GuideSection {
+  id               String      @id @default(cuid())
+  propertyId       String
+  type             SectionType @default(CUSTOM)
+  slug             String // anchor + topic QR target
+  title            String
+  shortDescription String?
+  content          String      @default("") // rich text / markdown
+  icon             String?
+  mapEmbedUrl      String?
+  internalNotes    String? // host-only
+  order            Int         @default(0)
+  isVisible        Boolean     @default(true)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  property   Property              @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  media      GuideMedia[]          @relation("SectionMedia")
+  qrCodes    QRCode[]
+  viewEvents GuestGuideViewEvent[]
+  questions  GuestQuestion[]
+
+  @@unique([propertyId, slug])
+  @@index([propertyId])
+}
+
+model GuideMedia {
+  id              String    @id @default(cuid())
+  propertyId      String
+  type            MediaType @default(IMAGE)
+  url             String
+  thumbnailUrl    String?
+  fileName        String?
+  fileSize        Int?
+  mimeType        String?
+  durationSeconds Int?
+  transcript      String?
+  captions        Json? // { locale: url|text }
+  title           String?
+  topic           String? // e.g. "keybox", "heating"
+  order           Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  property Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  sections GuideSection[] @relation("SectionMedia")
+
+  @@index([propertyId])
+}
+
+// Polymorphic translation store. entityType + entityId + field + locale → value.
+model Translation {
+  id         String   @id @default(cuid())
+  entityType String // "GuideSection" | "Recommendation" | "MessageTemplate" | "Property" ...
+  entityId   String
+  field      String // "title" | "content" | "shortDescription" | "body" ...
+  locale     Locale
+  value      String
+  isMachine  Boolean  @default(false) // AI-translated vs manually edited
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([entityType, entityId, field, locale])
+  @@index([entityType, entityId])
+}
+
+model QRCode {
+  id         String     @id @default(cuid())
+  propertyId String
+  type       QRCodeType @default(FULL_GUIDE)
+  token      String     @unique // short link /q/[token]
+  label      String?
+  targetPath String // resolved public path (e.g. /g/slug#wifi)
+  sectionId  String?
+  design     Json? // { fg, bg, logoUrl }
+  scanCount  Int        @default(0)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  property Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  section  GuideSection? @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+
+  @@index([propertyId])
+}
+
+model GuestGuideViewEvent {
+  id         String   @id @default(cuid())
+  propertyId String
+  sectionId  String?
+  locale     Locale?
+  sessionId  String?
+  referrer   String?
+  userAgent  String?
+  ipHash     String?
+  createdAt  DateTime @default(now())
+
+  property Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  section  GuideSection? @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+
+  @@index([propertyId, createdAt])
+}
+
+// ── Guest AI assistant ─────────────────────────────────────────────────────
+
+model GuestQuestion {
+  id              String   @id @default(cuid())
+  propertyId      String
+  question        String
+  locale          Locale   @default(EN)
+  answered        Boolean  @default(false)
+  answerText      String?
+  matchedSectionId String?
+  confidence      Float?
+  escalated       Boolean  @default(false)
+  suggestedFaq    Boolean  @default(false)
+  sessionId       String?
+  createdAt       DateTime @default(now())
+
+  property      Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  matchedSection GuideSection? @relation(fields: [matchedSectionId], references: [id], onDelete: SetNull)
+  answerLog     AIAnswerLog?
+
+  @@index([propertyId, createdAt])
+}
+
+model AIAnswerLog {
+  id             String   @id @default(cuid())
+  propertyId     String
+  guestQuestionId String?  @unique
+  prompt         String
+  response       String
+  model          String?
+  locale         Locale?
+  confidence     Float?
+  usedSectionIds String[] @default([])
+  tokensIn       Int?
+  tokensOut      Int?
+  fallback       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  property      Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  guestQuestion GuestQuestion? @relation(fields: [guestQuestionId], references: [id], onDelete: SetNull)
+
+  @@index([propertyId, createdAt])
+}
+
+// ── Messaging ──────────────────────────────────────────────────────────────
+
+model MessageTemplate {
+  id             String         @id @default(cuid())
+  organizationId String
+  propertyId     String? // null = org-global template
+  type           MessageType
+  name           String
+  locale         Locale         @default(EN)
+  subject        String?
+  body           String
+  channel        MessageChannel @default(MANUAL)
+  enabled        Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  property          Property?          @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  scheduledMessages ScheduledMessage[]
+
+  @@index([organizationId])
+  @@index([propertyId])
+}
+
+model ScheduledMessage {
+  id              String                 @id @default(cuid())
+  propertyId      String
+  templateId      String?
+  guestStayId     String?
+  type            MessageType
+  channel         MessageChannel         @default(MANUAL)
+  toEmail         String?
+  toPhone         String?
+  renderedSubject String?
+  renderedBody    String
+  scheduledFor    DateTime
+  status          ScheduledMessageStatus @default(SCHEDULED)
+  sentAt          DateTime?
+  error           String?
+  createdAt       DateTime               @default(now())
+
+  property  Property         @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  template  MessageTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  guestStay GuestStay?       @relation(fields: [guestStayId], references: [id], onDelete: SetNull)
+
+  @@index([propertyId, status])
+  @@index([scheduledFor])
+}
+
+// ── Guests, satisfaction & reviews ──────────────────────────────────────────
+
+model GuestStay {
+  id          String   @id @default(cuid())
+  propertyId  String
+  guestName   String?
+  guestEmail  String?
+  guestPhone  String?
+  locale      Locale   @default(EN)
+  checkIn     DateTime
+  checkOut    DateTime
+  numGuests   Int?
+  bookingCode String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  property           Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  satisfactionChecks SatisfactionCheck[]
+  scheduledMessages  ScheduledMessage[]
+  reviewRequests     ReviewRequest[]
+  issues             Issue[]
+
+  @@index([propertyId, checkIn])
+}
+
+model SatisfactionCheck {
+  id              String               @id @default(cuid())
+  propertyId      String
+  guestStayId     String?
+  token           String               @unique
+  status          SatisfactionResponse @default(PENDING)
+  problemCategory IssueCategory?
+  comment         String?
+  respondedAt     DateTime?
+  createdAt       DateTime             @default(now())
+
+  property  Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  guestStay GuestStay? @relation(fields: [guestStayId], references: [id], onDelete: SetNull)
+  issue     Issue?
+
+  @@index([propertyId])
+}
+
+model ReviewRequest {
+  id                  String              @id @default(cuid())
+  propertyId          String
+  guestStayId         String?
+  status              ReviewRequestStatus @default(DRAFT)
+  draftMessage        String?
+  hostReviewDraft     String?
+  privateFeedback     String?
+  hasUnresolvedIssues Boolean             @default(false)
+  sentAt              DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  property  Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  guestStay GuestStay? @relation(fields: [guestStayId], references: [id], onDelete: SetNull)
+
+  @@index([propertyId])
+}
+
+// ── Issues ──────────────────────────────────────────────────────────────────
+
+model Issue {
+  id             String        @id @default(cuid())
+  propertyId     String
+  organizationId String
+  guestStayId    String?
+  satisfactionCheckId String?  @unique
+
+  title             String
+  category          IssueCategory @default(OTHER)
+  description       String?
+  urgency           IssueUrgency  @default(MEDIUM)
+  status            IssueStatus   @default(NEW)
+  source            IssueSource   @default(GUEST)
+  roomLocation      String?
+  contactPreference String?
+  guestName         String?
+  guestContact      String?
+  photos            String[]      @default([])
+  assignedToId      String?
+  resolvedAt        DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  property          Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  guestStay         GuestStay?         @relation(fields: [guestStayId], references: [id], onDelete: SetNull)
+  satisfactionCheck SatisfactionCheck? @relation(fields: [satisfactionCheckId], references: [id], onDelete: SetNull)
+  assignedTo        User?              @relation("IssueAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  comments          IssueComment[]
+
+  @@index([propertyId, status])
+  @@index([organizationId, status])
+}
+
+model IssueComment {
+  id         String   @id @default(cuid())
+  issueId    String
+  authorId   String?
+  body       String
+  isInternal Boolean  @default(true)
+  photos     String[] @default([])
+  createdAt  DateTime @default(now())
+
+  issue  Issue @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  author User? @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([issueId])
+}
+
+// ── Cleaning & turnover ─────────────────────────────────────────────────────
+
+model CleaningChecklistTemplate {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  isDefault      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  items        CleaningChecklistItem[]
+  tasks        CleaningTask[]
+
+  @@index([organizationId])
+}
+
+model CleaningChecklistItem {
+  id         String  @id @default(cuid())
+  templateId String
+  label      String
+  room       String?
+  order      Int     @default(0)
+  required   Boolean @default(true)
+
+  template CleaningChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId])
+}
+
+model CleaningTask {
+  id                 String         @id @default(cuid())
+  propertyId         String
+  organizationId     String
+  templateId         String?
+  guestStayId        String?
+  title              String?
+  status             CleaningStatus @default(PENDING)
+  assignedToId       String?
+  inspectedById      String?
+  dueAt              DateTime?
+  startedAt          DateTime?
+  completedAt        DateTime?
+  inspectedAt        DateTime?
+  readyForNextGuest  Boolean        @default(false)
+  notes              String?
+  photos             String[]       @default([])
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  property     Property                   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  organization Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  template     CleaningChecklistTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  assignedTo   User?                      @relation("CleaningAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  inspectedBy  User?                      @relation("CleaningInspector", fields: [inspectedById], references: [id], onDelete: SetNull)
+  items        CleaningTaskItem[]
+
+  @@index([propertyId, status])
+  @@index([assignedToId])
+  @@index([organizationId, status])
+}
+
+model CleaningTaskItem {
+  id       String   @id @default(cuid())
+  taskId   String
+  label    String
+  room     String?
+  order    Int      @default(0)
+  isDone   Boolean  @default(false)
+  doneAt   DateTime?
+  photoUrl String?
+  note     String?
+
+  task CleaningTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+}
+
+// ── Inventory & restocking ──────────────────────────────────────────────────
+
+model InventoryItem {
+  id              String          @id @default(cuid())
+  propertyId      String
+  name            String
+  category        String?
+  unit            String?
+  currentStatus   InventoryStatus @default(OK)
+  quantity        Int?
+  threshold       Int?
+  lastRestockedAt DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  property     Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  restockTasks RestockTask[]
+
+  @@index([propertyId])
+}
+
+model RestockTask {
+  id             String        @id @default(cuid())
+  propertyId     String
+  inventoryItemId String?
+  title          String
+  status         RestockStatus @default(PENDING)
+  assignedToId   String?
+  dueAt          DateTime?
+  completedAt    DateTime?
+  note           String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  property      Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  assignedTo    User?          @relation("RestockAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([propertyId, status])
+}
+
+// ── Local recommendations ───────────────────────────────────────────────────
+
+model Recommendation {
+  id           String                 @id @default(cuid())
+  propertyId   String
+  category     RecommendationCategory @default(OTHER)
+  title        String
+  description  String?
+  address      String?
+  mapUrl       String?
+  website      String?
+  phone        String?
+  openingHours String?
+  hostNote     String?
+  imageUrl     String?
+  affiliateTag String?
+  order        Int                    @default(0)
+  isVisible    Boolean                @default(true)
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+}
+
+// ── Analytics, audit & platform ─────────────────────────────────────────────
+
+model AnalyticsEvent {
+  id             String             @id @default(cuid())
+  organizationId String
+  propertyId     String?
+  type           AnalyticsEventType
+  sectionId      String?
+  qrCodeId       String?
+  locale         Locale?
+  value          Float?
+  metadata       Json?
+  sessionId      String?
+  createdAt      DateTime           @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  property     Property?    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, type, createdAt])
+  @@index([propertyId, type, createdAt])
+}
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String?
+  actorUserId    String?
+  action         String
+  targetType     String?
+  targetId       String?
+  metadata       Json?
+  ipHash         String?
+  createdAt      DateTime @default(now())
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  actor        User?         @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+}
+
+model AdminSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+}
