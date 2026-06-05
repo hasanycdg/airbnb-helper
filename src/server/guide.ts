@@ -191,17 +191,25 @@ export async function saveTranslationAction(formData: FormData): Promise<void> {
   revalidatePath(`/properties/${section.property.id}/guide/${sectionId}`);
 }
 
-export async function aiTranslateSectionAction(formData: FormData): Promise<void> {
+/**
+ * AI-translate the section into a target locale. Translates the title and
+ * content the host is CURRENTLY editing (passed live from the client, so
+ * unsaved edits are translated too), persists the machine translations, and
+ * returns them so the editor can show them immediately.
+ */
+export async function translateSectionAction(input: {
+  sectionId: string;
+  locale: Locale;
+  title: string;
+  content: string;
+}): Promise<{ ok: boolean; title: string; content: string; error?: string }> {
   const ctx = await requireRole(["OWNER", "MANAGER"]);
-  const sectionId = String(formData.get("sectionId"));
-  const locale = String(formData.get("locale")) as Locale;
-  const section = await loadOwnedSection(sectionId, ctx.organization.id);
-  if (!section) return;
+  const section = await loadOwnedSection(input.sectionId, ctx.organization.id);
+  if (!section) return { ok: false, title: "", content: "", error: "Section not found." };
 
-  const glossary = [section.title].filter(Boolean);
   const [title, content] = await Promise.all([
-    translateContent({ text: section.title, to: locale, glossary }),
-    translateContent({ text: section.content, to: locale, glossary }),
+    translateContent({ text: input.title, to: input.locale }),
+    translateContent({ text: input.content, to: input.locale }),
   ]);
 
   for (const [field, value] of [["title", title], ["content", content]] as const) {
@@ -209,14 +217,22 @@ export async function aiTranslateSectionAction(formData: FormData): Promise<void
       where: {
         entityType_entityId_field_locale: {
           entityType: "GuideSection",
-          entityId: sectionId,
+          entityId: input.sectionId,
           field,
-          locale,
+          locale: input.locale,
         },
       },
-      create: { entityType: "GuideSection", entityId: sectionId, field, locale, value, isMachine: true },
+      create: {
+        entityType: "GuideSection",
+        entityId: input.sectionId,
+        field,
+        locale: input.locale,
+        value,
+        isMachine: true,
+      },
       update: { value, isMachine: true },
     });
   }
-  revalidatePath(`/properties/${section.property.id}/guide/${sectionId}`);
+  revalidatePath(`/properties/${section.property.id}/guide/${input.sectionId}`);
+  return { ok: true, title, content };
 }

@@ -207,8 +207,10 @@ export async function translateContent(params: {
   glossary?: string[];
 }): Promise<string> {
   const { text, to, glossary } = params;
+  // Nothing to translate — never echo a glossary term for empty input.
+  if (!text || !text.trim()) return text ?? "";
   const out = await complete(
-    `Translate the user's content into ${localeName(to)}. Preserve markdown/formatting, URLs, codes, numbers, and these house-specific terms verbatim: ${(glossary ?? []).join(", ") || "(none)"}. Output ONLY the translation.`,
+    `Translate the user's content into ${localeName(to)}. Preserve markdown/formatting, URLs, codes, numbers, and these house-specific terms verbatim: ${(glossary ?? []).join(", ") || "(none)"}. Output ONLY the translation, with no preamble.`,
     text,
     0.2,
   );
