@@ -74,6 +74,37 @@ export const APP_MESSAGES: Dict = {
     en: "{count} inventory items running low across your properties.",
   },
   "dash.review": { de: "Ansehen", en: "Review" },
+
+  // ── Properties ──────────────────────────────────────────────
+  "props.title": { de: "Unterkünfte", en: "Properties" },
+  "props.subtitle": {
+    de: "Jede Unterkunft hat ihren eigenen Guide, QR-Codes und Betrieb.",
+    en: "Each property has its own guide, QR codes and operations.",
+  },
+  "props.new": { de: "Neue Unterkunft", en: "New property" },
+  "props.empty.title": { de: "Noch keine Unterkünfte", en: "No properties yet" },
+  "props.empty.desc": {
+    de: "Füge deine erste Unterkunft hinzu, um den digitalen Gäste-Guide zu erstellen.",
+    en: "Add your first property to start building its digital guest guide.",
+  },
+  "props.counts": { de: "{sections} Abschnitte · {qr} QR-Codes", en: "{sections} sections · {qr} QR codes" },
+
+  "newprop.title": { de: "Unterkunft hinzufügen", en: "Add a property" },
+  "newprop.desc": {
+    de: "Wir legen einen Starter-Guide mit den üblichen Abschnitten an, damit du schnell veröffentlichen kannst.",
+    en: "We'll create a starter guide with the common sections so you can publish quickly.",
+  },
+  "newprop.publicName": { de: "Öffentlicher Name (für Gäste sichtbar)", en: "Public name (shown to guests)" },
+  "newprop.internalName": { de: "Interner Name (optional)", en: "Internal name (optional)" },
+  "newprop.city": { de: "Stadt (optional)", en: "City (optional)" },
+  "newprop.create": { de: "Unterkunft erstellen", en: "Create property" },
+  "newprop.creating": { de: "Wird erstellt …", en: "Creating…" },
+
+  // ── Guest guide (host-facing bits) ──────────────────────────
+  "guide.draftBanner": {
+    de: "Entwurf-Vorschau — dieser Guide ist noch nicht veröffentlicht. Öffne ihn im Dashboard und klicke „Guide veröffentlichen“, um ihn für Gäste freizuschalten.",
+    en: "Draft preview — this guide isn't published yet. Open it in your dashboard and hit “Publish guide” to make it live for guests.",
+  },
 };
 
 export function translate(

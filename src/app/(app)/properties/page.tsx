@@ -10,12 +10,14 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { NewPropertyDialog } from "@/components/properties/new-property-dialog";
+import { getT } from "@/lib/app-locale";
 
 export const metadata: Metadata = { title: "Properties" };
 
 export default async function PropertiesPage() {
   const ctx = await requireOrg();
   const canManage = can(ctx.role, "property:manage");
+  const t = await getT();
 
   const properties = await db.property.findMany({
     where: { organizationId: ctx.organization.id },
@@ -25,15 +27,15 @@ export default async function PropertiesPage() {
 
   return (
     <>
-      <PageHeader title="Properties" description="Each property has its own guide, QR codes and operations.">
+      <PageHeader title={t("props.title")} description={t("props.subtitle")}>
         {canManage && <NewPropertyDialog />}
       </PageHeader>
 
       {properties.length === 0 ? (
         <EmptyState
           icon={Building2}
-          title="No properties yet"
-          description="Add your first property to start building its digital guest guide."
+          title={t("props.empty.title")}
+          description={t("props.empty.desc")}
           action={canManage ? <NewPropertyDialog /> : undefined}
         />
       ) : (
@@ -57,7 +59,7 @@ export default async function PropertiesPage() {
                   )}
                   <div className="absolute right-2 top-2">
                     <Badge variant={p.isPublished ? "success" : "secondary"}>
-                      {p.isPublished ? "Published" : "Draft"}
+                      {p.isPublished ? t("common.published") : t("common.draft")}
                     </Badge>
                   </div>
                 </div>
@@ -69,7 +71,7 @@ export default async function PropertiesPage() {
                     </p>
                   )}
                   <p className="pt-1 text-xs text-muted-foreground">
-                    {p._count.sections} sections · {p._count.qrCodes} QR codes
+                    {t("props.counts", { sections: p._count.sections, qr: p._count.qrCodes })}
                   </p>
                 </CardContent>
               </Card>

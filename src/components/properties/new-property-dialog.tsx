@@ -15,8 +15,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SubmitButton } from "@/components/shared/submit-button";
+import { useT } from "@/components/app/app-i18n-provider";
 
 export function NewPropertyDialog() {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [state, formAction] = useActionState(createPropertyAction, undefined);
 
@@ -24,32 +26,30 @@ export function NewPropertyDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
-          <Plus /> New property
+          <Plus /> {t("props.new")}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add a property</DialogTitle>
-          <DialogDescription>
-            We&apos;ll create a starter guide with the common sections so you can publish quickly.
-          </DialogDescription>
+          <DialogTitle>{t("newprop.title")}</DialogTitle>
+          <DialogDescription>{t("newprop.desc")}</DialogDescription>
         </DialogHeader>
         <form action={formAction} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="publicName">Public name (shown to guests)</Label>
+            <Label htmlFor="publicName">{t("newprop.publicName")}</Label>
             <Input id="publicName" name="publicName" placeholder="City Apartment Innsbruck" required autoFocus />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="internalName">Internal name (optional)</Label>
+            <Label htmlFor="internalName">{t("newprop.internalName")}</Label>
             <Input id="internalName" name="internalName" placeholder="Innsbruck #1" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="city">City (optional)</Label>
+            <Label htmlFor="city">{t("newprop.city")}</Label>
             <Input id="city" name="city" placeholder="Innsbruck" />
           </div>
           {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
           <div className="flex justify-end">
-            <SubmitButton pendingText="Creating…">Create property</SubmitButton>
+            <SubmitButton pendingText={t("newprop.creating")}>{t("newprop.create")}</SubmitButton>
           </div>
         </form>
       </DialogContent>

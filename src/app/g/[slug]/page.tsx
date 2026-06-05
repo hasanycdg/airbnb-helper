@@ -5,6 +5,7 @@ import { MapPin } from "lucide-react";
 import { getPublishedGuide } from "@/lib/guide-data";
 import { trackGuideView } from "@/lib/analytics";
 import { t } from "@/lib/i18n";
+import { getT } from "@/lib/app-locale";
 import { formatDate } from "@/lib/utils";
 import { GuestGuide } from "@/components/guest/guest-guide";
 import { AiChat } from "@/components/guest/ai-chat";
@@ -54,12 +55,13 @@ export default async function GuestGuidePage({
     need_help: t(locale, "need_help"),
   };
 
+  const appT = await getT();
+
   return (
     <>
       {!property.isPublished && (
         <div className="bg-warning px-4 py-2 text-center text-sm font-medium text-warning-foreground">
-          Draft preview — this guide isn’t published yet. Open it in your dashboard and hit
-          “Publish guide” to make it live for guests.
+          {appT("guide.draftBanner")}
         </div>
       )}
       <div className="mx-auto max-w-2xl pb-24">
