@@ -28,7 +28,7 @@ export default async function GuestGuidePage({
 }) {
   const { slug } = await params;
   const { lang } = await searchParams;
-  const guide = await getPublishedGuide(slug, lang ?? null);
+  const guide = await getPublishedGuide(slug, lang ?? null, true);
   if (!guide) notFound();
 
   const { property, locale } = guide;
@@ -55,7 +55,14 @@ export default async function GuestGuidePage({
   };
 
   return (
-    <div className="mx-auto max-w-2xl pb-24">
+    <>
+      {!property.isPublished && (
+        <div className="bg-warning px-4 py-2 text-center text-sm font-medium text-warning-foreground">
+          Draft preview — this guide isn’t published yet. Open it in your dashboard and hit
+          “Publish guide” to make it live for guests.
+        </div>
+      )}
+      <div className="mx-auto max-w-2xl pb-24">
       {/* Header / cover */}
       <header className="relative h-52 w-full overflow-hidden sm:h-60">
         {property.coverImageUrl ? (
@@ -104,6 +111,7 @@ export default async function GuestGuidePage({
       </div>
 
       {property.aiEnabled && <AiChat slug={slug} locale={locale} labels={labels} />}
-    </div>
+      </div>
+    </>
   );
 }

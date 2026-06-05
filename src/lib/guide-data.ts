@@ -44,6 +44,7 @@ export interface PublishedGuide {
     hostName: string | null;
     hostPhone: string | null;
     aiEnabled: boolean;
+    isPublished: boolean;
     updatedAt: Date;
   };
   organizationId: string;
@@ -60,6 +61,7 @@ export interface PublishedGuide {
 export async function getPublishedGuide(
   slug: string,
   requestedLocale: string | null,
+  allowDraft = false,
 ): Promise<PublishedGuide | null> {
   const property = await db.property.findUnique({
     where: { slug },
@@ -76,7 +78,8 @@ export async function getPublishedGuide(
     },
   });
 
-  if (!property || !property.isPublished) return null;
+  if (!property) return null;
+  if (!property.isPublished && !allowDraft) return null;
 
   const base = property.baseLocale;
   const requested = toLocale(requestedLocale, base);
@@ -130,6 +133,7 @@ export async function getPublishedGuide(
       hostName: property.hostName,
       hostPhone: property.hostPhone,
       aiEnabled: property.aiEnabled,
+      isPublished: property.isPublished,
       updatedAt: property.updatedAt,
     },
     organizationId: property.organization.id,
