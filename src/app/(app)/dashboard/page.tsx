@@ -11,6 +11,7 @@ import {
 import { requireOrg } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { PLANS } from "@/lib/plans";
+import { getT } from "@/lib/app-locale";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +25,7 @@ export const metadata: Metadata = { title: "Dashboard" };
 export default async function DashboardPage() {
   const ctx = await requireOrg();
   const orgId = ctx.organization.id;
+  const t = await getT();
 
   const [
     propertyCount,
@@ -54,43 +56,44 @@ export default async function DashboardPage() {
   ]);
 
   const plan = ctx.organization.subscription?.plan ?? "TRIAL";
+  const firstName = ctx.user.name?.split(" ")[0] ?? "host";
 
   return (
     <>
       <PageHeader
-        title={`Welcome back, ${ctx.user.name?.split(" ")[0] ?? "host"}`}
-        description={`${ctx.organization.name} · ${PLANS[plan].name} plan`}
+        title={t("dash.welcome", { name: firstName })}
+        description={t("dash.subtitle", { org: ctx.organization.name, plan: PLANS[plan].name })}
       >
         <Button asChild>
           <Link href="/properties">
-            <Building2 /> Manage properties
+            <Building2 /> {t("dash.manageProperties")}
           </Link>
         </Button>
       </PageHeader>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Properties" value={propertyCount} icon={Building2} />
-        <StatCard label="Open issues" value={openIssues} icon={TriangleAlert} hint="Not yet resolved" />
-        <StatCard label="Cleaning to do" value={pendingCleaning} icon={SprayCan} hint="Pending or in progress" />
-        <StatCard label="Unanswered questions" value={unansweredQuestions} icon={MessageCircleQuestion} />
+        <StatCard label={t("dash.stat.properties")} value={propertyCount} icon={Building2} />
+        <StatCard label={t("dash.stat.openIssues")} value={openIssues} icon={TriangleAlert} hint={t("dash.stat.openIssues.hint")} />
+        <StatCard label={t("dash.stat.cleaning")} value={pendingCleaning} icon={SprayCan} hint={t("dash.stat.cleaning.hint")} />
+        <StatCard label={t("dash.stat.questions")} value={unansweredQuestions} icon={MessageCircleQuestion} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader className="flex-row items-center justify-between space-y-0">
             <div>
-              <CardTitle>Recent issues</CardTitle>
-              <CardDescription>Latest guest-reported problems</CardDescription>
+              <CardTitle>{t("dash.recentIssues")}</CardTitle>
+              <CardDescription>{t("dash.recentIssues.desc")}</CardDescription>
             </div>
             <Button variant="ghost" size="sm" asChild>
               <Link href="/issues">
-                View all <ArrowRight />
+                {t("common.viewAll")} <ArrowRight />
               </Link>
             </Button>
           </CardHeader>
           <CardContent className="space-y-3">
             {recentIssues.length === 0 && (
-              <p className="text-sm text-muted-foreground">No issues reported yet.</p>
+              <p className="text-sm text-muted-foreground">{t("dash.noIssues")}</p>
             )}
             {recentIssues.map((issue) => (
               <Link
@@ -115,23 +118,23 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader className="flex-row items-center justify-between space-y-0">
             <div>
-              <CardTitle>Upcoming cleaning</CardTitle>
-              <CardDescription>Turnovers that need attention</CardDescription>
+              <CardTitle>{t("dash.upcomingCleaning")}</CardTitle>
+              <CardDescription>{t("dash.upcomingCleaning.desc")}</CardDescription>
             </div>
             <Button variant="ghost" size="sm" asChild>
               <Link href="/cleaning">
-                View all <ArrowRight />
+                {t("common.viewAll")} <ArrowRight />
               </Link>
             </Button>
           </CardHeader>
           <CardContent className="space-y-3">
             {upcomingCleaning.length === 0 && (
-              <p className="text-sm text-muted-foreground">No cleaning tasks scheduled.</p>
+              <p className="text-sm text-muted-foreground">{t("dash.noCleaning")}</p>
             )}
             {upcomingCleaning.map((task) => (
               <div key={task.id} className="flex items-center justify-between gap-3 rounded-lg border p-3 text-sm">
                 <div className="min-w-0">
-                  <p className="truncate font-medium">{task.title ?? "Turnover"}</p>
+                  <p className="truncate font-medium">{task.title ?? t("dash.turnover")}</p>
                   <p className="text-xs text-muted-foreground">
                     {task.property.publicName}
                     {task.assignedTo?.name ? ` · ${task.assignedTo.name}` : ""}
@@ -148,12 +151,9 @@ export default async function DashboardPage() {
         <Card className="border-warning/40 bg-warning/5">
           <CardContent className="flex items-center gap-3 p-4 text-sm">
             <Package className="h-5 w-5 text-warning" />
-            <span>
-              <strong>{lowInventory}</strong> inventory item{lowInventory === 1 ? "" : "s"} running low across your
-              properties.
-            </span>
+            <span>{t("dash.lowInventory", { count: lowInventory })}</span>
             <Button variant="ghost" size="sm" asChild className="ml-auto">
-              <Link href="/inventory">Review</Link>
+              <Link href="/inventory">{t("dash.review")}</Link>
             </Button>
           </CardContent>
         </Card>

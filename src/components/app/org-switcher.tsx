@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useT } from "@/components/app/app-i18n-provider";
 
 export interface OrgOption {
   id: string;
@@ -28,6 +29,7 @@ export function OrgSwitcher({
   planLabel: string;
 }) {
   const active = orgs.find((o) => o.id === activeOrgId);
+  const t = useT();
 
   return (
     <DropdownMenu>
@@ -36,13 +38,13 @@ export function OrgSwitcher({
           <Building className="h-4 w-4" />
         </span>
         <span className="flex-1 truncate">
-          <span className="block truncate font-medium">{active?.name ?? "Organization"}</span>
-          <span className="block truncate text-xs text-muted-foreground">{planLabel} plan</span>
+          <span className="block truncate font-medium">{active?.name ?? t("org.fallback")}</span>
+          <span className="block truncate text-xs text-muted-foreground">{t("org.plan", { plan: planLabel })}</span>
         </span>
         <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-[--radix-dropdown-menu-trigger-width] min-w-56">
-        <DropdownMenuLabel>Organizations</DropdownMenuLabel>
+        <DropdownMenuLabel>{t("org.organizations")}</DropdownMenuLabel>
         {orgs.map((org) => (
           <form action={switchOrganizationAction} key={org.id}>
             <input type="hidden" name="organizationId" value={org.id} />
@@ -57,7 +59,7 @@ export function OrgSwitcher({
         <DropdownMenuSeparator />
         <Link href="/onboarding">
           <DropdownMenuItem className={cn("cursor-pointer")}>
-            <Plus className="mr-2" /> New organization
+            <Plus className="mr-2" /> {t("org.new")}
           </DropdownMenuItem>
         </Link>
       </DropdownMenuContent>

@@ -2,19 +2,28 @@ import { requireOrg } from "@/lib/auth";
 import { can } from "@/lib/rbac";
 import { APP_NAV } from "@/lib/nav";
 import { PLANS } from "@/lib/plans";
+import { getAppLocale } from "@/lib/app-locale";
+import { translate } from "@/lib/app-i18n";
 import { Sidebar } from "@/components/app/sidebar";
 import { Topbar } from "@/components/app/topbar";
+import { AppI18nProvider } from "@/components/app/app-i18n-provider";
 import type { ClientNavGroup } from "@/components/app/nav-links";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const ctx = await requireOrg();
   const role = ctx.role;
+  const locale = await getAppLocale();
 
   const groups: ClientNavGroup[] = APP_NAV.map((group) => ({
-    label: group.label,
+    label: group.labelKey ? translate(locale, group.labelKey) : group.label,
     items: group.items
       .filter((item) => !item.permission || can(role, item.permission))
-      .map(({ label, href, icon, exact }) => ({ label, href, icon, exact })),
+      .map(({ label, i18nKey, href, icon, exact }) => ({
+        label: i18nKey ? translate(locale, i18nKey) : label,
+        href,
+        icon,
+        exact,
+      })),
   })).filter((g) => g.items.length > 0);
 
   const orgs = ctx.user.memberships.map((m) => ({ id: m.organizationId, name: m.organization.name }));
@@ -22,21 +31,23 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const planLabel = PLANS[plan].name;
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar groups={groups} orgs={orgs} activeOrgId={ctx.organization.id} planLabel={planLabel} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar
-          groups={groups}
-          orgs={orgs}
-          activeOrgId={ctx.organization.id}
-          planLabel={planLabel}
-          userName={ctx.user.name}
-          userEmail={ctx.user.email}
-        />
-        <main className="flex-1 px-4 py-6 md:px-8 md:py-8">
-          <div className="mx-auto w-full max-w-6xl space-y-6">{children}</div>
-        </main>
+    <AppI18nProvider locale={locale}>
+      <div className="flex min-h-screen">
+        <Sidebar groups={groups} orgs={orgs} activeOrgId={ctx.organization.id} planLabel={planLabel} />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <Topbar
+            groups={groups}
+            orgs={orgs}
+            activeOrgId={ctx.organization.id}
+            planLabel={planLabel}
+            userName={ctx.user.name}
+            userEmail={ctx.user.email}
+          />
+          <main className="flex-1 px-4 py-6 md:px-8 md:py-8">
+            <div className="mx-auto w-full max-w-6xl space-y-6">{children}</div>
+          </main>
+        </div>
       </div>
-    </div>
+    </AppI18nProvider>
   );
 }
