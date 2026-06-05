@@ -24,7 +24,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     return NextResponse.json({ error: "Not found." }, { status: 404 });
   }
 
-  const form = await req.formData();
+  let form: FormData;
+  try {
+    form = await req.formData();
+  } catch {
+    return NextResponse.json({ error: "Expected multipart form data." }, { status: 400 });
+  }
   const file = form.get("file");
   if (!(file instanceof Blob)) return NextResponse.json({ error: "No file." }, { status: 400 });
   if (!file.type.startsWith("image/")) {
