@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ImagePlus, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ interface TaskPhotoPanelProps {
 
 export function TaskPhotoPanel({ taskId, photos, canComplete }: TaskPhotoPanelProps) {
   const { toast } = useToast();
+  const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -43,8 +45,13 @@ export function TaskPhotoPanel({ taskId, photos, canComplete }: TaskPhotoPanelPr
       const fd = new FormData();
       fd.set("taskId", taskId);
       fd.set("photoUrl", target.publicUrl);
-      await addTaskPhoto(undefined, fd);
+      const res = await addTaskPhoto(undefined, fd);
+      if (res?.error) {
+        toast({ variant: "destructive", title: "Fehler", description: res.error });
+        return;
+      }
       toast({ title: "Beweis-Foto hinzugefügt" });
+      router.refresh();
     } catch {
       toast({ variant: "destructive", title: "Upload fehlgeschlagen", description: "Bitte erneut versuchen." });
     } finally {

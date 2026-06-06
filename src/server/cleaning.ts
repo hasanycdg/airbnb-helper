@@ -180,7 +180,9 @@ export async function toggleItem(
 const setItemPhotoSchema = z.object({
   itemId: z.string().min(1),
   taskId: z.string().min(1),
-  photoUrl: z.string().url("Must be a valid URL").or(z.literal("")),
+  photoUrl: z
+    .string()
+    .refine((v) => v === "" || v.startsWith("/") || /^https?:\/\//.test(v), "Invalid photo URL"),
 });
 
 export async function setItemPhoto(
@@ -565,7 +567,10 @@ export async function reportMissingInventory(
 
 const addTaskPhotoSchema = z.object({
   taskId: z.string().min(1),
-  photoUrl: z.string().url("Must be a valid URL"),
+  photoUrl: z
+    .string()
+    .min(1)
+    .refine((v) => v.startsWith("/") || /^https?:\/\//.test(v), "Invalid photo URL"),
 });
 
 export async function addTaskPhoto(

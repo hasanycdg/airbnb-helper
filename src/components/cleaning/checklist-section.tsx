@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Camera, Check, Loader2, MessageSquare, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
@@ -38,6 +39,7 @@ function ChecklistItemRow({
   canComplete: boolean;
 }) {
   const { toast } = useToast();
+  const router = useRouter();
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [noteValue, setNoteValue] = useState(item.note ?? "");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -87,8 +89,13 @@ function ChecklistItemRow({
       fd.set("itemId", item.id);
       fd.set("taskId", taskId);
       fd.set("photoUrl", target.publicUrl);
-      await setItemPhoto(undefined, fd);
+      const res = await setItemPhoto(undefined, fd);
+      if (res?.error) {
+        toast({ variant: "destructive", title: "Fehler", description: res.error });
+        return;
+      }
       toast({ title: "Foto gespeichert" });
+      router.refresh();
     } catch {
       toast({ variant: "destructive", title: "Upload fehlgeschlagen", description: "Bitte erneut versuchen." });
     } finally {
