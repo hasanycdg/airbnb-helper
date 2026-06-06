@@ -1,9 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ExternalLink, Phone, Search, Sparkles } from "lucide-react";
-import type { Locale } from "@prisma/client";
+import { AlertTriangle, ChevronDown, ExternalLink, Phone, Search, Sparkles } from "lucide-react";
 import type { GuideRecommendationView, GuideSectionView } from "@/lib/guide-data";
 import { RECOMMENDATION_CATEGORY_LABELS } from "@/lib/constants";
 import { SectionIcon } from "@/components/shared/section-icon";
@@ -31,6 +30,23 @@ export function GuestGuide({
   labels,
 }: GuestGuideProps) {
   const [query, setQuery] = useState("");
+  // First section open by default; the rest collapsed for a tidy, scannable menu.
+  const [openIds, setOpenIds] = useState<Set<string>>(
+    () => new Set(sections[0] ? [sections[0].id] : []),
+  );
+
+  // Open + scroll to a section when arriving via a QR deep link (e.g. /g/x#wifi).
+  useEffect(() => {
+    const hash = decodeURIComponent(window.location.hash.replace("#", ""));
+    if (!hash) return;
+    const target = sections.find((s) => s.slug === hash);
+    if (!target) return;
+    setOpenIds((prev) => new Set(prev).add(target.id));
+    setTimeout(
+      () => document.getElementById(target.slug)?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      60,
+    );
+  }, [sections]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -39,6 +55,21 @@ export function GuestGuide({
       `${s.title} ${s.shortDescription} ${s.content}`.toLowerCase().includes(q),
     );
   }, [query, sections]);
+
+  function toggle(id: string) {
+    setOpenIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function jumpTo(s: GuideSectionView) {
+    setOpenIds((prev) => new Set(prev).add(s.id));
+    requestAnimationFrame(() =>
+      document.getElementById(s.slug)?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -56,81 +87,101 @@ export function GuestGuide({
       </div>
 
       {/* Category chips */}
-      {!query && (
+      {!query && sections.length > 1 && (
         <div className="flex gap-2 overflow-x-auto pb-1">
           {sections.map((s) => (
-            <a
+            <button
               key={s.id}
-              href={`#${s.slug}`}
-              className="flex shrink-0 items-center gap-1.5 rounded-full border bg-background px-3 py-1.5 text-xs font-medium"
+              type="button"
+              onClick={() => jumpTo(s)}
+              className="flex shrink-0 items-center gap-1.5 rounded-full border bg-background px-3 py-1.5 text-xs font-medium hover:bg-accent"
             >
               <SectionIcon name={s.icon} className="h-3.5 w-3.5" />
               {s.title}
-            </a>
+            </button>
           ))}
         </div>
       )}
 
-      {/* Sections */}
+      {/* Sections (collapsible) */}
       {filtered.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">{labels.no_results}</p>
       ) : (
-        <div className="space-y-4">
-          {filtered.map((s) => (
-            <section
-              key={s.id}
-              id={s.slug}
-              className="scroll-mt-20 rounded-2xl border bg-card p-5 shadow-sm"
-            >
-              <div className="mb-2 flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <SectionIcon name={s.icon} />
-                </span>
-                <div>
-                  <h2 className="font-semibold">{s.title}</h2>
-                  {s.shortDescription && (
-                    <p className="text-xs text-muted-foreground">{s.shortDescription}</p>
-                  )}
-                </div>
-              </div>
+        <div className="space-y-3">
+          {filtered.map((s) => {
+            const open = query.trim().length > 0 || openIds.has(s.id);
+            return (
+              <section
+                key={s.id}
+                id={s.slug}
+                className="scroll-mt-20 overflow-hidden rounded-2xl border bg-card shadow-sm"
+              >
+                <button
+                  type="button"
+                  onClick={() => toggle(s.id)}
+                  aria-expanded={open}
+                  className="flex w-full items-center gap-3 p-4 text-left"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <SectionIcon name={s.icon} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-semibold">{s.title}</span>
+                    {s.shortDescription && (
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {s.shortDescription}
+                      </span>
+                    )}
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "h-5 w-5 shrink-0 text-muted-foreground transition-transform",
+                      open && "rotate-180",
+                    )}
+                  />
+                </button>
 
-              {s.content && <Markdown content={s.content} className="text-sm text-foreground/90" />}
+                {open && (
+                  <div className="space-y-3 px-4 pb-5 pt-0">
+                    {s.content && <Markdown content={s.content} className="text-sm text-foreground/90" />}
 
-              {/* Media */}
-              {s.media.length > 0 && (
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  {s.media.map((m) =>
-                    m.type === "VIDEO" ? (
-                      <video
-                        key={m.id}
-                        controls
-                        poster={m.thumbnailUrl ?? undefined}
-                        className="w-full rounded-lg border"
-                      >
-                        <source src={m.url} />
-                      </video>
-                    ) : m.type === "IMAGE" ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img key={m.id} src={m.url} alt={m.title ?? ""} className="w-full rounded-lg border object-cover" />
-                    ) : (
-                      <a key={m.id} href={m.url} className="flex items-center gap-2 rounded-lg border p-3 text-sm">
-                        <ExternalLink className="h-4 w-4" /> {m.title ?? "Download"}
-                      </a>
-                    ),
-                  )}
-                </div>
-              )}
+                    {s.media.length > 0 && (
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {s.media.map((m) =>
+                          m.type === "VIDEO" ? (
+                            <video
+                              key={m.id}
+                              controls
+                              poster={m.thumbnailUrl ?? undefined}
+                              className="w-full rounded-lg border"
+                            >
+                              <source src={m.url} />
+                            </video>
+                          ) : m.type === "IMAGE" ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img key={m.id} src={m.url} alt={m.title ?? ""} className="w-full rounded-lg border object-cover" />
+                          ) : (
+                            <a key={m.id} href={m.url} className="flex items-center gap-2 rounded-lg border p-3 text-sm">
+                              <ExternalLink className="h-4 w-4" /> {m.title ?? "Download"}
+                            </a>
+                          ),
+                        )}
+                      </div>
+                    )}
 
-              {s.mapEmbedUrl && (
-                <iframe
-                  src={s.mapEmbedUrl}
-                  className="mt-3 aspect-video w-full rounded-lg border"
-                  loading="lazy"
-                  title={`Map: ${s.title}`}
-                />
-              )}
-            </section>
-          ))}
+                    {s.mapEmbedUrl && (
+                      <iframe
+                        src={s.mapEmbedUrl}
+                        className="aspect-video w-full rounded-lg border"
+                        loading="lazy"
+                        title={`Map: ${s.title}`}
+                      />
+                    )}
+                  </div>
+                )}
+              </section>
+            );
+          })}
         </div>
       )}
 

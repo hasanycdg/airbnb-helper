@@ -103,7 +103,9 @@ export async function getPublishedGuide(
     content: translateField(s.content, sTr[s.id], "content", locale, base),
     mapEmbedUrl: s.mapEmbedUrl,
     media: s.media,
-  }));
+  }))
+    // Hide sections the host left empty so guests never see blank cards.
+    .filter((s) => s.content.trim().length > 0 || s.media.length > 0 || Boolean(s.mapEmbedUrl));
 
   const recommendations: GuideRecommendationView[] = property.recommendations.map((r) => ({
     id: r.id,

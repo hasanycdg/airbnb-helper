@@ -63,10 +63,15 @@ export function Markdown({ content, className }: { content: string; className?: 
       continue;
     }
     flushList();
-    if (line.startsWith("## ")) {
-      blocks.push(<h3 key={key++} className="mt-3 text-base font-semibold">{renderInline(line.slice(3), `h-${key}`)}</h3>);
-    } else if (line.startsWith("# ")) {
-      blocks.push(<h2 key={key++} className="mt-3 text-lg font-semibold">{renderInline(line.slice(2), `h-${key}`)}</h2>);
+    const heading = line.match(/^(#{1,6})\s+(.*)$/);
+    if (heading) {
+      const level = heading[1].length;
+      const size = level <= 1 ? "text-lg" : level === 2 ? "text-base" : "text-sm";
+      blocks.push(
+        <p key={key++} className={`mt-3 font-semibold ${size}`}>
+          {renderInline(heading[2], `h-${key}`)}
+        </p>,
+      );
     } else if (line.trim() === "") {
       // paragraph break — handled by spacing
     } else {
