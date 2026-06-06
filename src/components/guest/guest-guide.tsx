@@ -222,12 +222,13 @@ export function GuestGuide({
         </section>
       )}
 
-      {/* Emergency */}
-      {!query && (emergencyContacts.length > 0 || hostPhone) && (
+      {/* Help & emergency — always rendered so guests can always report a problem */}
+      {!query && (
         <section id="emergency" className="scroll-mt-20 rounded-2xl border border-destructive/30 bg-destructive/5 p-5">
           <h2 className="flex items-center gap-2 font-semibold text-destructive">
-            <AlertTriangle className="h-5 w-5" /> {labels.emergency}
+            <AlertTriangle className="h-5 w-5" /> {labels.need_help}
           </h2>
+          {(emergencyContacts.length > 0 || hostPhone) && (
           <div className="mt-3 space-y-2">
             {emergencyContacts.map((c, i) => (
               <a key={i} href={`tel:${c.phone}`} className="flex items-center justify-between rounded-lg border bg-background p-3 text-sm">
@@ -246,6 +247,7 @@ export function GuestGuide({
               </a>
             )}
           </div>
+          )}
           <Link
             href={`/g/${slug}/report`}
             className="mt-3 flex items-center justify-center gap-2 rounded-lg bg-destructive px-4 py-2.5 text-sm font-medium text-destructive-foreground"
