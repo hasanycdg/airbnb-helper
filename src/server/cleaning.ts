@@ -6,8 +6,28 @@ import { db } from "@/lib/db";
 import { requireOrg, requireRole } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { can } from "@/lib/rbac";
+import { buildMediaKey, createUploadTarget } from "@/lib/storage";
 
 export type CleaningState = { error?: string; success?: boolean } | undefined;
+
+/** Upload target for a cleaning photo (item proof / damage). Org-scoped. */
+export async function requestCleaningUpload(input: {
+  taskId: string;
+  fileName: string;
+  contentType: string;
+}): Promise<{ uploadUrl: string; publicUrl: string } | null> {
+  const ctx = await requireOrg();
+  if (!can(ctx.role, "cleaning:complete")) return null;
+  if (!input.contentType.startsWith("image/")) return null;
+  const task = await db.cleaningTask.findFirst({
+    where: { id: input.taskId, organizationId: ctx.organization.id },
+    select: { id: true, propertyId: true },
+  });
+  if (!task) return null;
+  const key = buildMediaKey(ctx.organization.id, task.propertyId, `cleaning-${input.fileName}`);
+  const target = await createUploadTarget(key, input.contentType);
+  return { uploadUrl: target.uploadUrl, publicUrl: target.publicUrl };
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

@@ -1,14 +1,11 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
-import { Camera, ExternalLink, Plus } from "lucide-react";
+import { useRef, useState } from "react";
+import { ImagePlus, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { SubmitButton } from "@/components/shared/submit-button";
-import { addTaskPhoto } from "@/server/cleaning";
+import { addTaskPhoto, requestCleaningUpload } from "@/server/cleaning";
 
 interface TaskPhotoPanelProps {
   taskId: string;
@@ -18,95 +15,88 @@ interface TaskPhotoPanelProps {
 
 export function TaskPhotoPanel({ taskId, photos, canComplete }: TaskPhotoPanelProps) {
   const { toast } = useToast();
-  const [showInput, setShowInput] = useState(false);
-  const [state, action] = useActionState(addTaskPhoto, undefined);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
 
-  useEffect(() => {
-    if (state?.success) {
-      toast({ title: "Proof photo added." });
-      setShowInput(false);
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ variant: "destructive", title: "Nur Bilder", description: "Bitte ein Bild auswählen." });
+      return;
     }
-    if (state?.error) {
-      toast({ title: "Error", description: state.error, variant: "destructive" });
+    if (file.size > 8 * 1024 * 1024) {
+      toast({ variant: "destructive", title: "Bild zu groß", description: "Maximal 8 MB." });
+      return;
     }
-  }, [state, toast]);
+    setUploading(true);
+    try {
+      const target = await requestCleaningUpload({ taskId, fileName: file.name, contentType: file.type });
+      if (!target) throw new Error("no target");
+      const put = await fetch(target.uploadUrl, {
+        method: "PUT",
+        headers: { "content-type": file.type },
+        body: file,
+      });
+      if (!put.ok) throw new Error("upload failed");
+      const fd = new FormData();
+      fd.set("taskId", taskId);
+      fd.set("photoUrl", target.publicUrl);
+      await addTaskPhoto(undefined, fd);
+      toast({ title: "Beweis-Foto hinzugefügt" });
+    } catch {
+      toast({ variant: "destructive", title: "Upload fehlgeschlagen", description: "Bitte erneut versuchen." });
+    } finally {
+      setUploading(false);
+    }
+  }
 
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between space-y-0 py-3">
-        <CardTitle className="text-sm">Proof photos</CardTitle>
+        <CardTitle className="text-sm">Beweis-Fotos</CardTitle>
         {canComplete && photos.length < 20 && (
           <Button
             type="button"
             size="sm"
             variant="ghost"
             className="h-7"
-            onClick={() => setShowInput((v) => !v)}
+            disabled={uploading}
+            onClick={() => inputRef.current?.click()}
           >
-            <Plus className="h-3.5 w-3.5" /> Add
+            {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}{" "}
+            Hochladen
           </Button>
         )}
       </CardHeader>
       <CardContent className="space-y-3 pt-0">
-        {photos.length === 0 && !showInput && (
+        <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
+
+        {photos.length === 0 ? (
           <p className="text-xs text-muted-foreground">
-            No proof photos yet.{" "}
-            {canComplete ? "Add photo URLs to document the clean." : ""}
+            Noch keine Beweis-Fotos.{" "}
+            {canComplete ? "Lade Fotos hoch, um die Reinigung zu dokumentieren." : ""}
           </p>
-        )}
-
-        {/* Photo list */}
-        <div className="space-y-1.5">
-          {photos.map((url, i) => (
-            <a
-              key={i}
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-xs hover:bg-accent"
-            >
-              <Camera className="h-3 w-3 shrink-0 text-muted-foreground" />
-              <span className="min-w-0 flex-1 truncate text-muted-foreground">{url}</span>
-              <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
-            </a>
-          ))}
-        </div>
-
-        {showInput && canComplete && (
-          <form action={action} className="space-y-2">
-            <input type="hidden" name="taskId" value={taskId} />
-            <div className="space-y-1">
-              <Label className="text-xs">Photo URL</Label>
-              <Input
-                name="photoUrl"
-                type="url"
-                placeholder="https://… photo URL"
-                className="h-8 text-xs"
-                required
-              />
-            </div>
-            <div className="flex gap-2">
-              <SubmitButton size="sm" pendingText="Adding…" className="flex-1">
-                Add photo
-              </SubmitButton>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="flex-1"
-                onClick={() => setShowInput(false)}
+        ) : (
+          <div className="grid grid-cols-3 gap-2">
+            {photos.map((url, i) => (
+              <a
+                key={i}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="relative aspect-square overflow-hidden rounded-lg border bg-muted hover:opacity-90"
               >
-                Cancel
-              </Button>
-            </div>
-            {state?.error && (
-              <p className="text-xs text-destructive">{state.error}</p>
-            )}
-          </form>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt={`Foto ${i + 1}`} className="h-full w-full object-cover" />
+              </a>
+            ))}
+          </div>
         )}
 
         {photos.length >= 20 && (
-          <p className="text-xs text-muted-foreground">Maximum 20 photos reached.</p>
+          <p className="text-xs text-muted-foreground">Maximal 20 Fotos erreicht.</p>
         )}
       </CardContent>
     </Card>
