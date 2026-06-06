@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import type { IssueComment, User } from "@prisma/client";
-import { addComment, draftGuestReplyAction, type IssueActionState, type DraftReplyState } from "@/server/issues";
+import { addComment, draftGuestReplyAction, type IssueActionState } from "@/server/issues";
 import { SubmitButton } from "@/components/shared/submit-button";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,10 +36,7 @@ export function CommentThread({ issueId, comments, canManage, canView }: Comment
     undefined,
   );
 
-  const [draftState, draftAction] = useActionState<DraftReplyState, FormData>(
-    draftGuestReplyAction,
-    undefined,
-  );
+  const [drafting, setDrafting] = useState(false);
 
   useEffect(() => {
     if (addState?.success) {
@@ -50,14 +47,6 @@ export function CommentThread({ issueId, comments, canManage, canView }: Comment
       toast({ title: "Error", description: addState.error, variant: "destructive" });
     }
   }, [addState, toast]);
-
-  useEffect(() => {
-    if (draftState?.draft) {
-      setBody(draftState.draft);
-    } else if (draftState?.error) {
-      toast({ title: "AI draft failed", description: draftState.error, variant: "destructive" });
-    }
-  }, [draftState, toast]);
 
   if (!canView) return null;
 
@@ -155,13 +144,28 @@ export function CommentThread({ issueId, comments, canManage, canView }: Comment
             </SubmitButton>
 
             {isGuest && canManage && (
-              <form action={draftAction} className="inline">
-                <input type="hidden" name="issueId" value={issueId} />
-                <Button type="submit" size="sm" variant="outline">
-                  <Sparkles className="mr-1 h-3.5 w-3.5" />
-                  AI draft
-                </Button>
-              </form>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={drafting}
+                onClick={async () => {
+                  setDrafting(true);
+                  try {
+                    const fd = new FormData();
+                    fd.set("issueId", issueId);
+                    const r = await draftGuestReplyAction(undefined, fd);
+                    if (r?.draft) setBody(r.draft);
+                    else if (r?.error)
+                      toast({ variant: "destructive", title: "AI draft failed", description: r.error });
+                  } finally {
+                    setDrafting(false);
+                  }
+                }}
+              >
+                <Sparkles className="mr-1 h-3.5 w-3.5" />
+                {drafting ? "Drafting…" : "AI draft"}
+              </Button>
             )}
           </div>
         </form>
