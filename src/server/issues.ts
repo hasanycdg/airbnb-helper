@@ -8,8 +8,10 @@ import { requireOrg } from "@/lib/auth";
 import { can } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { draftGuestReply, summarizeIssue } from "@/lib/ai";
+import { sendEmail } from "@/lib/email";
+import { env } from "@/lib/env";
 
-export type IssueActionState = { error?: string; success?: boolean } | undefined;
+export type IssueActionState = { error?: string; success?: boolean; info?: string } | undefined;
 
 /** On-demand AI summary of an issue (org-scoped). Not run during page render. */
 export async function summarizeIssueAction(issueId: string): Promise<string> {
@@ -236,8 +238,44 @@ export async function addComment(
     targetId: parsed.data.issueId,
   });
 
+  // Deliver guest-facing replies to the guest by email (best-effort). Needs a guest
+  // email on file AND a configured Resend key to actually send; otherwise it is
+  // logged to the server console and NOT delivered.
+  let info: string | undefined;
+  if (!parsed.data.isInternal) {
+    try {
+      const full = await db.issue.findUnique({
+        where: { id: parsed.data.issueId },
+        select: {
+          guestContact: true,
+          guestName: true,
+          property: { select: { publicName: true, slug: true, hostName: true } },
+          guestStay: { select: { guestEmail: true, guestName: true } },
+        },
+      });
+      const guestEmail =
+        full?.guestStay?.guestEmail ||
+        (full?.guestContact && full.guestContact.includes("@") ? full.guestContact.trim() : null);
+      if (guestEmail && full?.property) {
+        const guestName = full.guestName || full.guestStay?.guestName || "there";
+        const host = full.property.hostName || full.property.publicName;
+        await sendEmail({
+          to: guestEmail,
+          subject: `Re: your report — ${full.property.publicName}`,
+          text: `Hi ${guestName},\n\n${parsed.data.body.trim()}\n\n— ${host}\n${full.property.publicName}\n${env.appUrl}/g/${full.property.slug}`,
+        });
+        info = `Reply emailed to the guest (${guestEmail}).`;
+      } else {
+        info = "Saved — but the guest left no email, so it was not delivered.";
+      }
+    } catch (err) {
+      console.error("[issue] guest reply email failed", err);
+      info = "Saved — but sending the email to the guest failed.";
+    }
+  }
+
   revalidatePath(`/issues/${parsed.data.issueId}`);
-  return { success: true };
+  return { success: true, info };
 }
 
 // ── AI: draft guest reply ──────────────────────────────────────────────────

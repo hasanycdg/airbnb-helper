@@ -42,7 +42,7 @@ export function CommentThread({ issueId, comments, canManage, canView }: Comment
     if (addState?.success) {
       setBody("");
       formRef.current?.reset();
-      toast({ title: "Comment added" });
+      toast({ title: "Comment added", description: addState.info });
     } else if (addState?.error) {
       toast({ title: "Error", description: addState.error, variant: "destructive" });
     }
