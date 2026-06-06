@@ -108,7 +108,10 @@ export async function assignIssue(
   if (!issue) return { error: "Issue not found." };
 
   // Verify assignee is a member of this org
-  const assignedToId = parsed.data.assignedToId || null;
+  const assignedToId =
+    parsed.data.assignedToId && parsed.data.assignedToId !== "unassigned"
+      ? parsed.data.assignedToId
+      : null;
   if (assignedToId) {
     const member = await db.organizationMember.findFirst({
       where: { organizationId: ctx.organization.id, userId: assignedToId },

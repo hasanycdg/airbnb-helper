@@ -31,6 +31,11 @@ interface NewTaskDialogProps {
   members: { id: string; name: string | null; email: string }[];
 }
 
+// Radix Select item values can't be empty strings; use sentinels and normalize
+// them back to "" in the submitted hidden inputs (so the server action is unchanged).
+const NO_TEMPLATE = "none";
+const UNASSIGNED = "unassigned";
+
 export function NewTaskDialog({ properties, templates, members }: NewTaskDialogProps) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
@@ -72,8 +77,8 @@ export function NewTaskDialog({ properties, templates, members }: NewTaskDialogP
         <form action={action} className="space-y-4">
           {/* Hidden inputs for select values */}
           <input type="hidden" name="propertyId" value={propertyId} />
-          <input type="hidden" name="templateId" value={templateId} />
-          <input type="hidden" name="assignedToId" value={assignedToId} />
+          <input type="hidden" name="templateId" value={templateId === NO_TEMPLATE ? "" : templateId} />
+          <input type="hidden" name="assignedToId" value={assignedToId === UNASSIGNED ? "" : assignedToId} />
 
           <div className="space-y-2">
             <Label htmlFor="new-task-property">Property *</Label>
@@ -108,7 +113,7 @@ export function NewTaskDialog({ properties, templates, members }: NewTaskDialogP
                   <SelectValue placeholder="No template (empty checklist)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No template</SelectItem>
+                  <SelectItem value={NO_TEMPLATE}>No template</SelectItem>
                   {templates.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
                       {t.name}
@@ -126,7 +131,7 @@ export function NewTaskDialog({ properties, templates, members }: NewTaskDialogP
                 <SelectValue placeholder="Unassigned" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Unassigned</SelectItem>
+                <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
                 {members.map((m) => (
                   <SelectItem key={m.id} value={m.id}>
                     {m.name ?? m.email}

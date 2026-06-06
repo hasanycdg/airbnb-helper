@@ -25,6 +25,9 @@ interface AssignFormProps {
   members: TeamMember[];
 }
 
+// Radix Select forbids an empty-string item value (it's reserved for "cleared").
+const UNASSIGNED = "unassigned";
+
 export function AssignForm({ issueId, currentAssigneeId, members }: AssignFormProps) {
   const [state, formAction] = useActionState<IssueActionState, FormData>(
     assignIssue,
@@ -45,12 +48,12 @@ export function AssignForm({ issueId, currentAssigneeId, members }: AssignFormPr
       <input type="hidden" name="issueId" value={issueId} />
       <Label htmlFor="assignedToId">Assign to</Label>
       <div className="flex gap-2">
-        <Select name="assignedToId" defaultValue={currentAssigneeId ?? ""}>
+        <Select name="assignedToId" defaultValue={currentAssigneeId ?? UNASSIGNED}>
           <SelectTrigger id="assignedToId" className="flex-1">
             <SelectValue placeholder="Unassigned" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Unassigned</SelectItem>
+            <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
             {members.map((m) => (
               <SelectItem key={m.userId} value={m.userId}>
                 {m.name ?? m.email}
