@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { SubmitButton } from "@/components/shared/submit-button";
 import { useToast } from "@/components/ui/use-toast";
-import { createFaqFromQuestionAction, type State } from "@/server/questions";
+import { createFaqFromQuestionAction, generateFaqSuggestions, type State } from "@/server/questions";
 import { truncate } from "@/lib/utils";
 
 interface OrgProperty {
@@ -43,6 +43,7 @@ export function FaqSuggestionsPanel({
   const [suggestions, setSuggestions] = useState<string[]>(initialSuggestions);
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // We reuse createFaqFromQuestionAction with a synthetic questionId="suggestion"
   // Simpler: use a dedicated action-state for the "create from suggestion" path.
@@ -63,7 +64,20 @@ export function FaqSuggestionsPanel({
     }
   }, [faqState, selectedTopic, toast]);
 
-  if (suggestions.length === 0) return null;
+  async function generate() {
+    setLoading(true);
+    try {
+      const next = await generateFaqSuggestions();
+      setSuggestions(next);
+      if (next.length === 0) {
+        toast({ title: "Keine offenen Fragen", description: "Es gibt aktuell nichts vorzuschlagen." });
+      }
+    } catch {
+      toast({ variant: "destructive", title: "Fehler", description: "Vorschläge konnten nicht erstellt werden." });
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <>
@@ -81,16 +95,25 @@ export function FaqSuggestionsPanel({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              // Shuffle suggestions to surface different ones
-              setSuggestions((prev) => [...prev].sort(() => Math.random() - 0.5));
-            }}
-            title="Shuffle suggestions"
+            onClick={generate}
+            disabled={loading}
+            title="Vorschläge neu generieren"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className={loading ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
           </Button>
         </CardHeader>
         <CardContent className="space-y-2">
+          {suggestions.length === 0 && (
+            <div className="space-y-3 py-2 text-center">
+              <p className="text-sm text-muted-foreground">
+                Lass die KI aus euren offenen Gästefragen FAQ-Themen vorschlagen.
+              </p>
+              <Button variant="secondary" size="sm" onClick={generate} disabled={loading}>
+                {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Lightbulb className="h-4 w-4" />}
+                Vorschläge generieren
+              </Button>
+            </div>
+          )}
           {suggestions.map((topic) => (
             <div
               key={topic}

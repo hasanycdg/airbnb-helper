@@ -194,19 +194,17 @@ export async function createFaqFromQuestionAction(
  * Returns up to 5 suggested FAQ topics derived from the org's recent
  * unanswered questions. Org-scoped, read-only — no mutation.
  */
-export async function generateFaqSuggestions(organizationId: string): Promise<string[]> {
+export async function generateFaqSuggestions(): Promise<string[]> {
+  // Org is derived from the session (never trusted from the client). Called on
+  // demand from the panel button — NOT on every page render — so the AI call
+  // only happens when the host explicitly asks for suggestions.
+  const ctx = await requireRole(["OWNER", "MANAGER"]);
   const recent = await db.guestQuestion.findMany({
-    where: {
-      property: { organizationId },
-      answered: false,
-    },
+    where: { property: { organizationId: ctx.organization.id }, answered: false },
     orderBy: { createdAt: "desc" },
     take: 50,
     select: { question: true },
   });
-
   if (recent.length === 0) return [];
-
-  const texts = recent.map((q) => q.question);
-  return suggestFaqs(texts);
+  return suggestFaqs(recent.map((q) => q.question));
 }

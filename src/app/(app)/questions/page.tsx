@@ -13,7 +13,6 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { QuestionRow } from "@/components/questions/question-row";
 import { FaqSuggestionsPanel } from "@/components/questions/faq-suggestions-panel";
-import { generateFaqSuggestions } from "@/server/questions";
 
 export const metadata: Metadata = { title: "Guest Questions" };
 
@@ -58,9 +57,6 @@ export default async function QuestionsPage({
     orderBy: { name: "asc" },
   });
   const defaultPropertyId = orgProperties[0]?.id ?? "";
-
-  // ── AI FAQ suggestions (only from unanswered questions) ───────────────────
-  const faqSuggestions = await generateFaqSuggestions(orgId);
 
   return (
     <>
@@ -188,10 +184,10 @@ export default async function QuestionsPage({
         </div>
 
         {/* FAQ suggestions panel — 1/3 width on large screens */}
-        {orgProperties.length > 0 && faqSuggestions.length > 0 && (
+        {orgProperties.length > 0 && (
           <div className="lg:col-span-1">
             <FaqSuggestionsPanel
-              initialSuggestions={faqSuggestions}
+              initialSuggestions={[]}
               orgProperties={orgProperties}
               defaultPropertyId={defaultPropertyId}
             />
