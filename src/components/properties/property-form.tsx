@@ -54,7 +54,6 @@ export function PropertyForm({ property }: { property: Property }) {
           <Field name="publicName" label="Public name" defaultValue={property.publicName} />
           <Field name="internalName" label="Internal name" defaultValue={property.internalName} />
           <Field name="maxGuests" label="Max guests" type="number" defaultValue={property.maxGuests} />
-          <Field name="coverImageUrl" label="Cover image URL" defaultValue={property.coverImageUrl} placeholder="https://…" />
         </CardContent>
       </Card>
 

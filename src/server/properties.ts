@@ -11,6 +11,7 @@ import { audit } from "@/lib/audit";
 import { slugify } from "@/lib/utils";
 import { LOCALES, SECTION_TYPE_MAP } from "@/lib/constants";
 import { nanoid } from "nanoid";
+import { buildMediaKey, createUploadTarget } from "@/lib/storage";
 
 export type PropertyActionState = { error?: string; success?: boolean } | undefined;
 
@@ -126,7 +127,6 @@ const updateSchema = z.object({
   houseRules: z.string().optional(),
   quietHoursFrom: z.string().optional(),
   quietHoursTo: z.string().optional(),
-  coverImageUrl: z.string().optional(),
 });
 
 export async function updatePropertyAction(
@@ -173,7 +173,6 @@ export async function updatePropertyAction(
       houseRules: d.houseRules || null,
       quietHoursFrom: d.quietHoursFrom || null,
       quietHoursTo: d.quietHoursTo || null,
-      coverImageUrl: d.coverImageUrl || null,
       supportedLocales: supportedLocales.length ? supportedLocales : [property.baseLocale],
     },
   });
@@ -221,6 +220,42 @@ export async function deletePropertyAction(formData: FormData): Promise<void> {
     targetId: propertyId,
   });
   redirect("/properties");
+}
+
+/** Request an upload target (signed S3 PUT or local route) for a cover image. */
+export async function requestCoverUploadAction(input: {
+  propertyId: string;
+  fileName: string;
+  contentType: string;
+}): Promise<{ uploadUrl: string; publicUrl: string } | null> {
+  const ctx = await requireRole(["OWNER", "MANAGER"]);
+  if (!input.contentType.startsWith("image/")) return null;
+  const property = await db.property.findFirst({
+    where: { id: input.propertyId, organizationId: ctx.organization.id },
+    select: { id: true },
+  });
+  if (!property) return null;
+  const key = buildMediaKey(ctx.organization.id, input.propertyId, `cover-${input.fileName}`);
+  const target = await createUploadTarget(key, input.contentType);
+  return { uploadUrl: target.uploadUrl, publicUrl: target.publicUrl };
+}
+
+/** Set or clear the property's cover image (shown in the guest-guide header). */
+export async function setCoverImageAction(input: {
+  propertyId: string;
+  url: string | null;
+}): Promise<void> {
+  const ctx = await requireRole(["OWNER", "MANAGER"]);
+  const property = await db.property.findFirst({
+    where: { id: input.propertyId, organizationId: ctx.organization.id },
+    select: { id: true },
+  });
+  if (!property) return;
+  await db.property.update({
+    where: { id: input.propertyId },
+    data: { coverImageUrl: input.url || null },
+  });
+  revalidatePath(`/properties/${input.propertyId}`);
 }
 
 /** Load a property scoped to the active organization, or null. */

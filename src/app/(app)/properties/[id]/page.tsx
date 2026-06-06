@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { PropertyForm } from "@/components/properties/property-form";
 import { PropertySidePanel } from "@/components/properties/property-side-panel";
+import { CoverImageUploader } from "@/components/properties/cover-image-uploader";
 
 export default async function PropertyOverviewPage({
   params,
@@ -20,11 +21,14 @@ export default async function PropertyOverviewPage({
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
       <PropertyForm property={property} />
-      <PropertySidePanel
-        propertyId={property.id}
-        publicUrl={`${env.appUrl}/g/${property.slug}`}
-        isPublished={property.isPublished}
-      />
+      <div className="space-y-4">
+        <CoverImageUploader propertyId={property.id} coverUrl={property.coverImageUrl} />
+        <PropertySidePanel
+          propertyId={property.id}
+          publicUrl={`${env.appUrl}/g/${property.slug}`}
+          isPublished={property.isPublished}
+        />
+      </div>
     </div>
   );
 }
