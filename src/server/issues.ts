@@ -7,9 +7,22 @@ import { db } from "@/lib/db";
 import { requireOrg } from "@/lib/auth";
 import { can } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
-import { draftGuestReply } from "@/lib/ai";
+import { draftGuestReply, summarizeIssue } from "@/lib/ai";
 
 export type IssueActionState = { error?: string; success?: boolean } | undefined;
+
+/** On-demand AI summary of an issue (org-scoped). Not run during page render. */
+export async function summarizeIssueAction(issueId: string): Promise<string> {
+  const ctx = await requireOrg();
+  const issue = await db.issue.findFirst({
+    where: { id: issueId, organizationId: ctx.organization.id },
+    select: { title: true, description: true },
+  });
+  if (!issue) return "";
+  const text = [issue.title, issue.description].filter(Boolean).join("\n");
+  if (!text.trim()) return "";
+  return summarizeIssue(text);
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 

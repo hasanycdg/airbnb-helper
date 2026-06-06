@@ -17,7 +17,7 @@ import { db } from "@/lib/db";
 import { can } from "@/lib/rbac";
 import { ISSUE_CATEGORY_LABELS } from "@/lib/constants";
 import { formatDate, formatDateTime } from "@/lib/utils";
-import { summarizeIssue } from "@/lib/ai";
+import { IssueAiSummary } from "@/components/issues/issue-ai-summary";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -89,19 +89,6 @@ export default async function IssueDetailPage({ params }: PageProps) {
   }));
 
   const canManage = can(ctx.role, "issues:manage");
-
-  // AI summary (best-effort, no throw)
-  let aiSummary: string | null = null;
-  if (issue.description && issue.description.trim().length > 40) {
-    try {
-      aiSummary = await summarizeIssue(
-        [issue.title, issue.description].filter(Boolean).join("\n"),
-      );
-    } catch {
-      aiSummary = null;
-    }
-  }
-
   const comments = issue.comments as CommentWithAuthor[];
 
   return (
@@ -135,12 +122,7 @@ export default async function IssueDetailPage({ params }: PageProps) {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {aiSummary && (
-                <div className="rounded-lg bg-muted/40 px-4 py-3 text-sm">
-                  <span className="mr-2 font-medium text-muted-foreground">AI summary:</span>
-                  {aiSummary}
-                </div>
-              )}
+              {issue.description && <IssueAiSummary issueId={issue.id} />}
 
               {issue.description && (
                 <div className="space-y-1">
