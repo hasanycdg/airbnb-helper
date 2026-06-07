@@ -105,6 +105,47 @@ export const APP_MESSAGES: Dict = {
     de: "Entwurf-Vorschau — dieser Guide ist noch nicht veröffentlicht. Öffne ihn im Dashboard und klicke „Guide veröffentlichen“, um ihn für Gäste freizuschalten.",
     en: "Draft preview — this guide isn't published yet. Open it in your dashboard and hit “Publish guide” to make it live for guests.",
   },
+
+  // ── Profile & Support ───────────────────────────────────────
+  "profile.title": { de: "Profil", en: "Profile" },
+  "profile.subtitle": {
+    de: "Deine Kontodaten und der direkte Draht zu unserem Support.",
+    en: "Your account details and a direct line to our support.",
+  },
+  "profile.account": { de: "Konto", en: "Account" },
+  "profile.account.desc": {
+    de: "Diese Angaben stammen aus deinem Login.",
+    en: "These details come from your login.",
+  },
+  "profile.name": { de: "Name", en: "Name" },
+  "profile.email": { de: "E-Mail", en: "Email" },
+  "profile.role": { de: "Rolle", en: "Role" },
+  "profile.org": { de: "Organisation", en: "Organization" },
+
+  "support.title": { de: "Support kontaktieren", en: "Contact support" },
+  "support.desc": {
+    de: "Etwas funktioniert nicht oder du hast eine Frage? Schreib uns — wir melden uns per E-Mail bei dir zurück.",
+    en: "Something not working or you have a question? Write to us — we'll get back to you by email.",
+  },
+  "support.category": { de: "Thema", en: "Topic" },
+  "support.cat.bug": { de: "Fehler / Bug", en: "Bug / error" },
+  "support.cat.question": { de: "Frage", en: "Question" },
+  "support.cat.feature": { de: "Funktionswunsch", en: "Feature request" },
+  "support.cat.billing": { de: "Abrechnung", en: "Billing" },
+  "support.cat.other": { de: "Sonstiges", en: "Other" },
+  "support.message": { de: "Nachricht", en: "Message" },
+  "support.message.placeholder": {
+    de: "Beschreibe dein Anliegen möglichst genau …",
+    en: "Describe your request in as much detail as possible…",
+  },
+  "support.send": { de: "Nachricht senden", en: "Send message" },
+  "support.sending": { de: "Wird gesendet …", en: "Sending…" },
+  "support.success": { de: "Nachricht gesendet", en: "Message sent" },
+  "support.successDesc": {
+    de: "Danke! Deine Nachricht ist bei uns angekommen.",
+    en: "Thanks! Your message has reached us.",
+  },
+  "support.direct": { de: "Oder direkt per E-Mail:", en: "Or directly by email:" },
 };
 
 export function translate(

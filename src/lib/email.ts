@@ -14,12 +14,25 @@ export interface EmailMessage {
   subject: string;
   html?: string;
   text?: string;
+  /** Address replies should go to (e.g. the host who sent a support request). */
+  replyTo?: string;
 }
 
 export interface EmailResult {
   sent: boolean;
   mock: boolean;
   error?: string;
+}
+
+/**
+ * Address that host support requests are delivered to. Uses SUPPORT_EMAIL when
+ * set, otherwise parses the address out of EMAIL_FROM
+ * ("Name <addr@host>" → "addr@host"). Server-only (reads env).
+ */
+export function supportInbox(): string {
+  if (env.email.supportEmail) return env.email.supportEmail.trim();
+  const m = env.email.from.match(/<([^>]+)>/);
+  return (m ? m[1] : env.email.from).trim();
 }
 
 /**
@@ -45,6 +58,7 @@ export async function sendEmail(message: EmailMessage): Promise<EmailResult> {
       subject: message.subject,
       html: message.html ?? message.text ?? "",
       text: message.text,
+      ...(message.replyTo ? { replyTo: message.replyTo } : {}),
     });
     if (error) {
       const msg = error.message ?? "Resend rejected the send.";

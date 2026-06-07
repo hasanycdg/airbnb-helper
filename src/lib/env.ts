@@ -34,6 +34,9 @@ export const env = {
   email: {
     resendApiKey: process.env.RESEND_API_KEY ?? "",
     from: process.env.EMAIL_FROM ?? "StayGuide Pro <hello@example.com>",
+    // Where host support requests are delivered. Falls back to the address
+    // parsed out of EMAIL_FROM when unset.
+    supportEmail: process.env.SUPPORT_EMAIL ?? "",
   },
 
   s3: {

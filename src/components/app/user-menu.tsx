@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Check, Globe, LogOut, User as UserIcon } from "lucide-react";
 import { logoutAction } from "@/server/auth-actions";
 import { setAppLocaleAction } from "@/server/preferences";
@@ -35,8 +36,10 @@ export function UserMenu({ name, email }: { name: string | null; email: string }
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem disabled>
-          <UserIcon className="mr-2" /> {t("user.profile")}
+        <DropdownMenuItem asChild className="cursor-pointer">
+          <Link href="/settings/profile">
+            <UserIcon className="mr-2" /> {t("user.profile")}
+          </Link>
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />
