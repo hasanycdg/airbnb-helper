@@ -48,9 +48,10 @@ export function ApplyTemplateDialog({ template, properties }: Props) {
   useEffect(() => {
     if (!state) return;
     if (state.success) {
+      const langs = (state.locales ?? []).join(", ");
       toast({
         title: "Template applied",
-        description: `"${template.title}" has been added to the guide. Open the guide builder to customise it.`,
+        description: `"${template.title}" was added${langs ? ` in ${langs}` : ""}. Open the guide builder to customise it.`,
       });
       setOpen(false);
     }
@@ -142,7 +143,9 @@ export function ApplyTemplateDialog({ template, properties }: Props) {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                The chosen language becomes the main guide content. The other language is saved as a translation automatically.
+                This becomes the main guide content. Every other language your property
+                supports is filled in automatically — built-in text for German &amp; English,
+                AI translation for the rest.
               </p>
             </div>
 
