@@ -259,12 +259,14 @@ export async function addComment(
       if (guestEmail && full?.property) {
         const guestName = full.guestName || full.guestStay?.guestName || "there";
         const host = full.property.hostName || full.property.publicName;
-        await sendEmail({
+        const res = await sendEmail({
           to: guestEmail,
           subject: `Re: your report — ${full.property.publicName}`,
           text: `Hi ${guestName},\n\n${parsed.data.body.trim()}\n\n— ${host}\n${full.property.publicName}\n${env.appUrl}/g/${full.property.slug}`,
         });
-        info = `Reply emailed to the guest (${guestEmail}).`;
+        info = res.sent
+          ? `Reply emailed to the guest (${guestEmail}).`
+          : `Saved — but the email to ${guestEmail} could not be delivered (${res.error ?? "unknown error"}). Check your Resend sending domain.`;
       } else {
         info = "Saved — but the guest left no email, so it was not delivered.";
       }
