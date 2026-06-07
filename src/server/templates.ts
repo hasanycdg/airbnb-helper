@@ -19,7 +19,6 @@ export type TemplateActionState =
 const applySchema = z.object({
   propertyId: z.string().min(1, "Please select a property."),
   templateKey: z.string().min(1, "Missing template key."),
-  baseLocale: z.enum(["DE", "EN"]).default("DE"),
 });
 
 /**
@@ -45,13 +44,12 @@ export async function applyTemplateToProperty(
   const parsed = applySchema.safeParse({
     propertyId: formData.get("propertyId"),
     templateKey: formData.get("templateKey"),
-    baseLocale: formData.get("baseLocale") ?? "DE",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0].message };
   }
 
-  const { propertyId, templateKey, baseLocale } = parsed.data;
+  const { propertyId, templateKey } = parsed.data;
 
   // Org-scoped property lookup — never trust a bare client id.
   const property = await db.property.findFirst({
@@ -67,13 +65,30 @@ export async function applyTemplateToProperty(
     return { error: "Template not found." };
   }
 
-  // The chosen primary language becomes the GuideSection body; every other
-  // language the property supports is stored as a Translation row.
-  const primaryLocale: Locale = baseLocale as Locale;
-  const primaryContent =
-    primaryLocale === "DE" ? template.contentDE : template.contentEN;
-  const primaryTitle =
-    primaryLocale === "DE" ? template.titleDE : template.titleEN;
+  // The section body MUST be written in the property's REAL base language.
+  // translateField() returns the section body verbatim for base-locale viewers,
+  // so a mismatch (e.g. a German body on an English-base property) would make
+  // the guide "always show German". DE/EN come from the template; any other
+  // base language is AI-translated from the canonical German source.
+  const base: Locale = property.baseLocale;
+
+  // Resolve a field for a locale: built-in template text for DE/EN, AI
+  // translation (from the German source) for everything else. translateContent
+  // falls back to the source text when AI is offline.
+  const localized = async (
+    field: "title" | "content",
+    to: Locale,
+  ): Promise<{ value: string; isMachine: boolean }> => {
+    if (to === "DE")
+      return { value: field === "title" ? template.titleDE : template.contentDE, isMachine: false };
+    if (to === "EN")
+      return { value: field === "title" ? template.titleEN : template.contentEN, isMachine: false };
+    const source = field === "title" ? template.titleDE : template.contentDE;
+    return { value: await translateContent({ text: source, to }), isMachine: true };
+  };
+
+  const baseTitle = (await localized("title", base)).value;
+  const baseContent = (await localized("content", base)).value;
 
   const sectionType = template.sectionType;
   const meta = SECTION_TYPE_MAP[sectionType];
@@ -91,8 +106,8 @@ export async function applyTemplateToProperty(
     await db.guideSection.update({
       where: { id: existingSection.id },
       data: {
-        title: primaryTitle,
-        content: primaryContent,
+        title: baseTitle,
+        content: baseContent,
         icon: meta?.lucide ?? template.icon,
         isVisible: true,
       },
@@ -100,7 +115,7 @@ export async function applyTemplateToProperty(
     sectionId = existingSection.id;
   } else {
     // Create a new section. Ensure unique slug within property.
-    let slug = slugify(primaryTitle) || meta?.slug || "section";
+    let slug = slugify(baseTitle) || meta?.slug || "section";
     while (await db.guideSection.findFirst({ where: { propertyId, slug } })) {
       slug = `${slug}-${nanoid(3).toLowerCase()}`;
     }
@@ -112,8 +127,8 @@ export async function applyTemplateToProperty(
         propertyId,
         type: sectionType,
         slug,
-        title: primaryTitle,
-        content: primaryContent,
+        title: baseTitle,
+        content: baseContent,
         icon: meta?.lucide ?? template.icon,
         order: count,
         isVisible: true,
@@ -122,22 +137,8 @@ export async function applyTemplateToProperty(
     sectionId = created.id;
   }
 
-  // Populate every OTHER language the property supports. DE/EN use the
-  // template's built-in human text; all others are AI-translated from the
-  // primary content (translateContent falls back to the source text offline).
-  const targetLocales = property.supportedLocales.filter((l) => l !== primaryLocale);
-
-  const localized = async (
-    field: "title" | "content",
-    to: Locale,
-  ): Promise<{ value: string; isMachine: boolean }> => {
-    if (to === "DE")
-      return { value: field === "title" ? template.titleDE : template.contentDE, isMachine: false };
-    if (to === "EN")
-      return { value: field === "title" ? template.titleEN : template.contentEN, isMachine: false };
-    const source = field === "title" ? primaryTitle : primaryContent;
-    return { value: await translateContent({ text: source, to }), isMachine: true };
-  };
+  // Populate every OTHER language the property supports as a Translation row.
+  const targetLocales = property.supportedLocales.filter((l) => l !== base);
 
   await Promise.all(
     targetLocales.map(async (locale) => {
@@ -172,7 +173,7 @@ export async function applyTemplateToProperty(
     }),
   );
 
-  const filledLocales: Locale[] = [primaryLocale, ...targetLocales];
+  const filledLocales: Locale[] = [base, ...targetLocales];
 
   await audit({
     action: "template.apply",
@@ -183,7 +184,7 @@ export async function applyTemplateToProperty(
     metadata: {
       templateKey,
       propertyId,
-      baseLocale: primaryLocale,
+      baseLocale: base,
       locales: filledLocales,
     },
   });

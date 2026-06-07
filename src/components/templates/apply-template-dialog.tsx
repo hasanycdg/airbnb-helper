@@ -39,7 +39,6 @@ export function ApplyTemplateDialog({ template, properties }: Props) {
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>(
     properties[0]?.id ?? "",
   );
-  const [baseLocale, setBaseLocale] = useState<"DE" | "EN">("DE");
 
   const { toast } = useToast();
   const [state, formAction] = useActionState(applyTemplateToProperty, undefined);
@@ -121,40 +120,14 @@ export function ApplyTemplateDialog({ template, properties }: Props) {
               </p>
             </div>
 
-            {/* Base language selector */}
-            <div className="space-y-1.5">
-              <label
-                htmlFor="locale-select"
-                className="text-sm font-medium leading-none"
-              >
-                Primary language
-              </label>
-              <Select
-                name="baseLocale"
-                value={baseLocale}
-                onValueChange={(v) => setBaseLocale(v as "DE" | "EN")}
-              >
-                <SelectTrigger id="locale-select">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="DE">German (Deutsch)</SelectItem>
-                  <SelectItem value="EN">English</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                This becomes the main guide content. Every other language your property
-                supports is filled in automatically — built-in text for German &amp; English,
-                AI translation for the rest.
-              </p>
-            </div>
-
             {/* Notice */}
             <div className="flex items-start gap-2 rounded-lg bg-muted/60 p-3">
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <p className="text-xs text-muted-foreground">
-                Templates are editable starting points. Rules vary by municipality — please
-                customise the text before publishing to your guests.
+                Saved in the property&apos;s base language and auto-filled into every other
+                language it supports (AI translation for non-DE/EN). You can change which
+                languages a property offers in its settings. Templates are editable
+                starting points — customise the text before publishing.
               </p>
             </div>
 
