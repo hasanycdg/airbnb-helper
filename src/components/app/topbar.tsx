@@ -16,6 +16,7 @@ export function Topbar({
   planLabel,
   userName,
   userEmail,
+  supportEmail,
 }: {
   groups: ClientNavGroup[];
   orgs: OrgOption[];
@@ -23,6 +24,7 @@ export function Topbar({
   planLabel: string;
   userName: string | null;
   userEmail: string;
+  supportEmail: string;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -51,7 +53,7 @@ export function Topbar({
       </Link>
 
       <div className="flex-1" />
-      <UserMenu name={userName} email={userEmail} />
+      <UserMenu name={userName} email={userEmail} supportEmail={supportEmail} />
     </header>
   );
 }

@@ -4,6 +4,7 @@ import { APP_NAV } from "@/lib/nav";
 import { PLANS } from "@/lib/plans";
 import { getAppLocale } from "@/lib/app-locale";
 import { translate } from "@/lib/app-i18n";
+import { supportInbox } from "@/lib/email";
 import { Sidebar } from "@/components/app/sidebar";
 import { Topbar } from "@/components/app/topbar";
 import { AppI18nProvider } from "@/components/app/app-i18n-provider";
@@ -29,6 +30,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const orgs = ctx.user.memberships.map((m) => ({ id: m.organizationId, name: m.organization.name }));
   const plan = ctx.organization.subscription?.plan ?? "TRIAL";
   const planLabel = PLANS[plan].name;
+  const supportEmail = supportInbox();
 
   return (
     <AppI18nProvider locale={locale}>
@@ -42,6 +44,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             planLabel={planLabel}
             userName={ctx.user.name}
             userEmail={ctx.user.email}
+            supportEmail={supportEmail}
           />
           <main className="flex-1 px-4 py-6 md:px-8 md:py-8">
             <div className="mx-auto w-full max-w-6xl space-y-6">{children}</div>

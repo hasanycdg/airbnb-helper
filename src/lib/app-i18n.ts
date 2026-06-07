@@ -38,6 +38,7 @@ export const APP_MESSAGES: Dict = {
   // ── User menu ───────────────────────────────────────────────
   "user.account": { de: "Konto", en: "Account" },
   "user.profile": { de: "Profil", en: "Profile" },
+  "user.support": { de: "Support", en: "Support" },
   "user.logout": { de: "Abmelden", en: "Log out" },
   "user.language": { de: "Sprache", en: "Language" },
 

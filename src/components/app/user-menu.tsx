@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Check, Globe, LogOut, User as UserIcon } from "lucide-react";
+import { Check, Globe, LifeBuoy, LogOut, Mail, User as UserIcon } from "lucide-react";
 import { logoutAction } from "@/server/auth-actions";
 import { setAppLocaleAction } from "@/server/preferences";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -17,7 +17,15 @@ import { initials } from "@/lib/utils";
 import { useAppLocale, useT } from "@/components/app/app-i18n-provider";
 import { APP_LOCALES, APP_LOCALE_LABELS } from "@/lib/app-i18n";
 
-export function UserMenu({ name, email }: { name: string | null; email: string }) {
+export function UserMenu({
+  name,
+  email,
+  supportEmail,
+}: {
+  name: string | null;
+  email: string;
+  supportEmail?: string;
+}) {
   const t = useT();
   const locale = useAppLocale();
 
@@ -41,6 +49,21 @@ export function UserMenu({ name, email }: { name: string | null; email: string }
             <UserIcon className="mr-2" /> {t("user.profile")}
           </Link>
         </DropdownMenuItem>
+
+        {supportEmail && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="flex items-center gap-2 text-xs font-normal text-muted-foreground">
+              <LifeBuoy className="h-3.5 w-3.5" /> {t("user.support")}
+            </DropdownMenuLabel>
+            <DropdownMenuItem asChild className="cursor-pointer">
+              <a href={`mailto:${supportEmail}`}>
+                <Mail className="mr-2 h-3.5 w-3.5" />
+                <span className="truncate">{supportEmail}</span>
+              </a>
+            </DropdownMenuItem>
+          </>
+        )}
 
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="flex items-center gap-2 text-xs font-normal text-muted-foreground">
