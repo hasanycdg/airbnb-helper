@@ -1,0 +1,6 @@
+# Auto-HTTPS via Let's Encrypt for {$DOMAIN}, e.g. 203.0.113.9.nip.io
+# (nip.io resolves the embedded IP, so no DNS records are needed).
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy app:3000
+}

@@ -1,0 +1,63 @@
+# StayGuide Pro — test deployment stack: Postgres + app + Caddy (auto-HTTPS).
+# 1) cp .env.deploy.example .env   2) fill DOMAIN + AUTH_SECRET   3) up.
+#
+#   docker compose up -d --build
+#
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: stayguide
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stayguide}
+      POSTGRES_DB: stayguide
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stayguide -d stayguide"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  app:
+    build:
+      context: .
+      args:
+        # Baked into client bundles at build time (NEXT_PUBLIC_*).
+        NEXT_PUBLIC_APP_URL: "https://${DOMAIN}"
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://stayguide:${POSTGRES_PASSWORD:-stayguide}@postgres:5432/stayguide?schema=public"
+      NEXT_PUBLIC_APP_URL: "https://${DOMAIN}"
+      AUTH_SECRET: "${AUTH_SECRET:?set AUTH_SECRET in .env (openssl rand -base64 32)}"
+      SEED_ON_START: "${SEED_ON_START:-true}"
+      # Optional integrations — safe to leave empty (offline fallbacks kick in).
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      OPENAI_MODEL: "${OPENAI_MODEL:-gpt-4o-mini}"
+      RESEND_API_KEY: "${RESEND_API_KEY:-}"
+      EMAIL_FROM: "${EMAIL_FROM:-StayGuide Pro <hello@example.com>}"
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: "${DOMAIN}"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
